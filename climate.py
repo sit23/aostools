@@ -1019,7 +1019,7 @@ def GetWaves(x,y=[],wave=-1,axis=-1,do_anomaly=False):
     x = AxRoll(x,axis)
     # compute anomalies
     if do_anomaly:
-            x = GetAnomaly(x,0)
+        x = GetAnomaly(x,0)
         if len(y) > 0:
             y = AxRoll(y,axis)
             if do_anomaly:
