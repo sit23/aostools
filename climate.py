@@ -75,15 +75,15 @@ def ComputeClimate(file, climatType, wkdir='/', timeDim='time',cal=None):
     timeUnits = timeVar.units
     chck = CheckAny(timeUnits,('seconds','days','months'))
     if not chck:
-        print 'Cannot understand units of time, which is: '+timeUnits
-        newUnits = raw_input('Please provide units [seconds,days,months] ')
+        print('Cannot understand units of time, which is: '+timeUnits)
+        newUnits = input('Please provide units [seconds,days,months] ')
         if newUnits not in ["seconds","days","months"]:
             raise ValueError('units must be seconds, days, or months')
         unitSplit = timeUnits.split()
         unitSplit[0] = newUnits
         timeUnits = ' '.join(unitSplit)
     timeStep = np.diff(timeVar).mean()
-    print 'The time dimension is in units of',timeUnits,', with a mean time step of',timeStep,'days'
+    print('The time dimension is in units of',timeUnits,', with a mean time step of',timeStep,'days')
     # check the calendar type
     getCal = False
     if cal:
@@ -92,15 +92,15 @@ def ComputeClimate(file, climatType, wkdir='/', timeDim='time',cal=None):
         try:
             timeCal = str(timeVar.calendar)
             if not CheckAny(timeCal,calendar_types):
-                print 'Cannot understand the calendar type, which is: '+timeCal
-                timeCal = raw_input('Please provide a calendar type from the list '+str(calendar_types)+' ')
+                print('Cannot understand the calendar type, which is: '+timeCal)
+                timeCal = input('Please provide a calendar type from the list '+str(calendar_types)+' ')
                 timeVar.calendar = timeCal
         except:
-            timeCal = raw_input('Please provide a calendar type from the list '+str(calendar_types)+' ')
+            timeCal = input('Please provide a calendar type from the list '+str(calendar_types)+' ')
     if timeCal not in calendar_types:
         raise ValueError('calender must be in '+str(calendar_types))
     else:
-        print 'Calendar type '+timeCal
+        print('Calendar type '+timeCal)
     #
     # split everything into years,months,days
     date = nc.num2date(time,timeUnits,timeCal)
@@ -170,12 +170,12 @@ def ComputeClimate(file, climatType, wkdir='/', timeDim='time',cal=None):
     #
     # Here, we need to be very careful in the event of packaged data: netCDF4 knows about packaging when reading data, but we need to use scale_factor and add_offset to package the data back when writing the new file.
 
-    print 'Averaging variables:'
+    print('Averaging variables:')
     for var in ncFile.variables:
         varShape = np.shape(ncFile.variables[var])
         if len(varShape) == 0: continue
         if varShape[0] == numTimeSteps and len(varShape) >= 2:
-            print '                     ',var
+            print('                     ',var)
             tmpVar = ncFile.variables[var][:]
             if climType != 'daily' and climType != 'monthly':
                 outVar = outFile.createVariable(var,str(ncFile.variables[var].dtype),ncFile.variables[var].dimensions[1:])
@@ -205,7 +205,7 @@ def ComputeClimate(file, climatType, wkdir='/', timeDim='time',cal=None):
 
     ncFile.close()
     outFile.close()
-    print 'DONE, wrote file',outFileName
+    print('DONE, wrote file',outFileName)
     return outFileName
 
 ##############################################################################################
@@ -217,7 +217,7 @@ def AxRoll(x,ax,start_mode=0):
         Undo this if start_mode=='i'
     """
     from numpy import rollaxis
-    if isinstance(start_mode, basestring):
+    if isinstance(start_mode, str):
         mode = start_mode
     else:
         mode = 'f'
@@ -343,7 +343,7 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
         if not os.path.isfile(data):
             raise IOError('File '+data+' does not exist')
         # read input file
-        print 'Reading data'
+        print('Reading data')
         update_progress(0)
         if outFileName == 'same':
             mode = 'a'
@@ -383,7 +383,7 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
 
     ## write outputfile
     if outFileName is not 'none':
-        print 'Writing file  '+outFileName
+        print('Writing file  '+outFileName)
         if outFileName is not 'same':
             outFile = nc.Dataset(outFileName,'w')
             for dim in inFile.dimensions:
@@ -402,7 +402,7 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
         outVar = outFile.createVariable('psi_star', 'f4', (time,pfull,lat,))
         outVar[:] = psis
         outFile.close()
-        print 'Done writing file '+outFileName
+        print('Done writing file '+outFileName)
         if outFileName is not 'same':
             inFile.close()
     return psi,psis, v_th_bar, dthdp
@@ -602,7 +602,7 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
 
     # read input file
     if isinstance(data,str):
-        print 'Reading data'
+        print('Reading data')
         update_progress(0)
         #
         inFile = nc.Dataset(data, 'r')
