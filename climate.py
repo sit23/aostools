@@ -314,7 +314,7 @@ def ComputeRelativeHumidity(inFile, outFile='none', temp='temp', sphum='sphum', 
 
 
 ##############################################################################################
-def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', pfull='pfull', time='time', p0=1e3):
+def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', pfull='pfull', time='time', p0=1e3, a0=6371000., g=9.81):
     """Computes the residual stream function \Psi* (as a function of time).
 
         INPUTS:
@@ -337,8 +337,6 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
 
     # some constants
     kappa = 2./7
-    a0    = 6371000
-    g     = 9.81
 
     if isinstance(data,str):
         # check if file exists
@@ -370,7 +368,7 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
     #
     ## compute psi
 
-    v_bar,t_bar = ComputeVertEddy(v,t,p,p0) # t_bar = bar(v'Th'/(dTh_bar/dp))
+    v_bar,t_bar, v_th_bar, dthdp = ComputeVertEddy(v,t,p,p0) # t_bar = bar(v'Th'/(dTh_bar/dp))
 
     # Eulerian streamfunction
     psi = cumtrapz(v_bar,x=p,axis=1,initial=0) # [m.Pa/s]
@@ -407,7 +405,7 @@ def ComputePsi(data, outFileName='none', temp='temp', vcomp='vcomp', lat='lat', 
         print 'Done writing file '+outFileName
         if outFileName is not 'same':
             inFile.close()
-    return psi,psis
+    return psi,psis, v_th_bar, dthdp
 
 
 ##############################################################################################
@@ -477,7 +475,7 @@ def ComputeVertEddy(v,t,p,p0=1e3,wave=-1):
         t = GetWaves(v,t,wave=wave,do_anomaly=True) # t = bar(v'Th'_{k=wave})
         t_bar = t/dthdp # t_bar = bar(v'Th')/(dTh_bar/dp)
     #
-    return v_bar,t_bar
+    return v_bar,t_bar, t, dthdp
 
 ##############################################################################################
 def eof(X,n=1):
@@ -586,7 +584,7 @@ def ComputeAnnularMode(lat, pres, time, data, choice='z'):
     return AM
 
 ##############################################################################################
-def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e3):
+def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e3, a0=6371000., g=9.81):
     """Computes the residual meridional wind v* (as a function of time).
 
         INPUTS:
@@ -602,9 +600,6 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
     import netCDF4 as nc
     import numpy as np
 
-    a0    = 6371000
-    g     = 9.81
-
     # read input file
     if isinstance(data,str):
         print 'Reading data'
@@ -619,10 +614,10 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
         update_progress(1)
         inFile.close()
         #
-        v_bar,t_bar = ComputeVertEddy(v,t,p,p0,wave=wave)
+        v_bar,t_bar, v_th_bar, dthdp = ComputeVertEddy(v,t,p,p0,wave=wave)
     else:
         p = data[pfull]
-        v_bar,t_bar = ComputeVertEddy(data[vcomp],data[temp],p,p0,wave=wave)
+        v_bar,t_bar, v_th_bar, dthdp = ComputeVertEddy(data[vcomp],data[temp],p,p0,wave=wave)
     # t_bar = bar(v'Th'/(dTh_bar/dp))
     #
     dp  = np.gradient(p)[np.newaxis,:,np.newaxis]
@@ -632,7 +627,7 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
 
 
 ##############################################################################################
-def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', pfull='pfull', lat='lat', wave=[-1], p0=1e3):
+def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', pfull='pfull', lat='lat', wave=[-1], p0=1e3, a0=6371000.):
     """Computes the residual upwelling w* as a function of time.
 
     	Input dimensions must be time x pres x lat x lon.
@@ -657,8 +652,6 @@ def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', p
     import netCDF4 as nc
     import numpy as np
 
-    a0    = 6371000.
-
     # read input file
     if isinstance(data,str):
         inFile = nc.Dataset(data, 'r')
@@ -679,10 +672,10 @@ def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', p
     dphi = np.gradient(pilat)[np.newaxis,np.newaxis,:]
     # compute thickness weighted meridional heat flux
     shpe = data[omega].shape[:-1]
-    vt_bar = zeros((len(wave),)+shpe)
+    vt_bar = np.zeros((len(wave),)+shpe)
     for w in range(len(wave)):
     	#  w_bar is actually v_bar, but we don't need that
-    	w_bar,vt_bar[w,:] = ComputeVertEddy(data[vcomp],data[temp],data[pfull],p0,wave=wave[w])
+    	w_bar,vt_bar[w,:], v_th_bar, dthdp = ComputeVertEddy(data[vcomp],data[temp],data[pfull],p0,wave=wave[w])
     	# weigh v'T' by cos\phi
     	vt_bar[w,:] = vt_bar[w,:]*coslat
     	# get the meridional derivative
