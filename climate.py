@@ -630,8 +630,8 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
 def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', pfull='pfull', lat='lat', wave=[-1], p0=1e3, a0=6371000.):
     """Computes the residual upwelling w* as a function of time.
 
-    	Input dimensions must be time x pres x lat x lon.
-    	Output is either space-time (wave<0, dimensions time x pres x lat)
+        Input dimensions must be time x pres x lat x lon.
+        Output is either space-time (wave<0, dimensions time x pres x lat)
          or space-time-wave (dimensions wave x time x pres x lat).
         Output units are hPa/s, and the units of omega are expected to be hPa/s.
 
@@ -644,7 +644,7 @@ def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', p
             pfull - name of pressure in data [hPa]
             lat   - name of latitude in data [deg]
             wave  - decompose into given wave number contribution(s) if
-            		 len(wave)=1 and wave>=0, or len(wave)>1
+                     len(wave)=1 and wave>=0, or len(wave)>1
             p0    - pressure basis to compute potential temperature [hPa]
         OUTPUTS:
             residual pressure velocity, time x pfull x lat [and waves] [hPa/s]
@@ -656,7 +656,7 @@ def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', p
     if isinstance(data,str):
         inFile = nc.Dataset(data, 'r')
         if slice == 'all':
-        	slice=[0,inFile.variables[omega][:].shape[0]]
+            slice=[0,inFile.variables[omega][:].shape[0]]
         data = {}
         data[omega] = inFile.variables[omega][slice[0]:slice[1],:]*0.01 # [hPa/s]
         data[temp] = inFile.variables[temp][slice[0]:slice[1],:]
@@ -674,19 +674,19 @@ def ComputeWstar(data, slice='all', omega='omega', temp='temp', vcomp='vcomp', p
     shpe = data[omega].shape[:-1]
     vt_bar = np.zeros((len(wave),)+shpe)
     for w in range(len(wave)):
-    	#  w_bar is actually v_bar, but we don't need that
-    	w_bar,vt_bar[w,:], v_th_bar, dthdp = ComputeVertEddy(data[vcomp],data[temp],data[pfull],p0,wave=wave[w])
-    	# weigh v'T' by cos\phi
-    	vt_bar[w,:] = vt_bar[w,:]*coslat
-    	# get the meridional derivative
-    	vt_bar[w,:] = np.gradient(vt_bar[w,:],edge_order=2)[-1]/dphi
+        #  w_bar is actually v_bar, but we don't need that
+        w_bar,vt_bar[w,:], v_th_bar, dthdp = ComputeVertEddy(data[vcomp],data[temp],data[pfull],p0,wave=wave[w])
+        # weigh v'T' by cos\phi
+        vt_bar[w,:] = vt_bar[w,:]*coslat
+        # get the meridional derivative
+        vt_bar[w,:] = np.gradient(vt_bar[w,:],edge_order=2)[-1]/dphi
     # compute zonal mean upwelling
     w_bar = np.nanmean(data[omega],axis=-1)
     # put it all together
     if len(wave)==1:
-    	return w_bar + np.squeeze(R*vt_bar)
+        return w_bar + np.squeeze(R*vt_bar)
     else:
-    	return w_bar + R*vt_bar
+        return w_bar + R*vt_bar
 ##############################################################################################
 def ComputeEPfluxDiv(lat,pres,u,v,t,w=None,do_ubar=False,wave=-1):
     """ Compute the EP-flux vectors and divergence terms.
@@ -998,41 +998,41 @@ def ComputeRefractiveIndex(lat,pres,uz,Tz,k,N2const=None):
 
 ##############################################################################################
 def GetWaves(x,y=[],wave=-1,axis=-1,do_anomaly=False):
-	"""Get Fourier mode decomposition of x, or <x*y>, where <.> is zonal mean.
+    """Get Fourier mode decomposition of x, or <x*y>, where <.> is zonal mean.
 
         If y!=[], returns Fourier mode contributions (amplitudes) to co-spectrum zonal mean of x*y. Shape is same as input, except axis which is len(axis)/2+1 due to Fourier symmetry for real signals.
 
         If y=[] and wave>=0, returns real space contribution of given wave mode. Output has same shape as input.
         If y=[] and wave=-1, returns real space contributions for all waves. Output has additional first dimension corresponding to each wave.
 
-	INPUTS:
-		x          - the array to decompose
-		y          - second array if wanted
-		wave       - which mode to extract. all if <0
-		axis       - along which axis of x (and y) to decompose
-		do_anomaly - decompose from anomalies or full data
-	OUTPUTS:
-		xym        - data in Fourier space
-	"""
-	from numpy import fft,squeeze,real,zeros,zeros_like
-	initShape = x.shape
-	x = AxRoll(x,axis)
-	# compute anomalies
-	if do_anomaly:
+    INPUTS:
+        x          - the array to decompose
+        y          - second array if wanted
+        wave       - which mode to extract. all if <0
+        axis       - along which axis of x (and y) to decompose
+        do_anomaly - decompose from anomalies or full data
+    OUTPUTS:
+        xym        - data in Fourier space
+    """
+    from numpy import fft,squeeze,real,zeros,zeros_like
+    initShape = x.shape
+    x = AxRoll(x,axis)
+    # compute anomalies
+    if do_anomaly:
             x = GetAnomaly(x,0)
         if len(y) > 0:
             y = AxRoll(y,axis)
             if do_anomaly:
                 y = GetAnomaly(y,0)
     # Fourier decompose
-	x = fft.fft(x,axis=0)
-	nmodes = x.shape[0]/2+1
-	if wave < 0:
-		if len(y) > 0:
-			xym = zeros((nmodes,)+x.shape[1:])
-		else:
-			xym = zeros((nmodes,)+initShape)
-	if len(y) > 0:
+    x = fft.fft(x,axis=0)
+    nmodes = x.shape[0]/2+1
+    if wave < 0:
+        if len(y) > 0:
+            xym = zeros((nmodes,)+x.shape[1:])
+        else:
+            xym = zeros((nmodes,)+initShape)
+    if len(y) > 0:
             y = fft.fft(y,axis=0)
             # Take out the waves
             nl  = x.shape[0]**2
@@ -1040,17 +1040,17 @@ def GetWaves(x,y=[],wave=-1,axis=-1,do_anomaly=False):
             # due to symmetric spectrum, there's a factor of 2, but not for wave-0
             mask = zeros_like(xyf)
             if wave < 0:
-            	for m in range(xym.shape[0]):
-            		mask[m,:] = 1
-            		mask[-m,:]= 1
-            		xym[m,:] = sum(xyf*mask,axis=0)
-            		mask[:] = 0
-            	xym = AxRoll(xym,axis,'i')
+                for m in range(xym.shape[0]):
+                    mask[m,:] = 1
+                    mask[-m,:]= 1
+                    xym[m,:] = sum(xyf*mask,axis=0)
+                    mask[:] = 0
+                xym = AxRoll(xym,axis,'i')
             else:
-            	xym = xyf[wave,:]
-            	if wave >= 0:
-                	xym = xym + xyf[-wave,:]
-	else:
+                xym = xyf[wave,:]
+                if wave >= 0:
+                    xym = xym + xyf[-wave,:]
+    else:
             mask = zeros_like(x)
             if wave >= 0:
                 mask[wave,:] = 1
@@ -1064,7 +1064,7 @@ def GetWaves(x,y=[],wave=-1,axis=-1,do_anomaly=False):
                     fourTmp = real(fft.ifft(x*mask,axis=0))
                     xym[m,:] = AxRoll(fourTmp,axis,'i')
                     mask[:] = 0
-	return squeeze(xym)
+    return squeeze(xym)
 
 ##helper functions
 def GetAnomaly(x,axis=-1):
@@ -1145,8 +1145,8 @@ def Meters2Coord(data,mode='m2lat',coord=[],axis=-1):
 ##############################################################################################
 def ComputeBaroclinicity(lat, tempIn, hemi='both', minLat=20, maxLat=60, pres=None, minPres=250):
     """Compute the meridional temperature gradient, integrated between minLat and maxLat.
-    	Thus, baroclinicity is defined as the difference in temperature between minLat and maxLat,
-    	optionally integrated from the surface to minPres.
+        Thus, baroclinicity is defined as the difference in temperature between minLat and maxLat,
+        optionally integrated from the surface to minPres.
 
         INPUTS:
         lat     - latitude [degrees]
@@ -1156,10 +1156,10 @@ def ComputeBaroclinicity(lat, tempIn, hemi='both', minLat=20, maxLat=60, pres=No
         maxLat  - latitdue closest to pole
         pres    - pressure [hPa]
         minPres - top of pressure averaging from surface.
-        			only used if pres is not None.
+                    only used if pres is not None.
         OUTPUT:
         dT      - dictionary with options ['S'] and ['N'] if hemi='both'
-        			otherwise array of length len(time)
+                    otherwise array of length len(time)
     """
     import numpy as np
 
@@ -1215,13 +1215,13 @@ def ComputeBaroclinicity(lat, tempIn, hemi='both', minLat=20, maxLat=60, pres=No
 #######################################################
 def SymmetricColorbar(fig, obj, zero=0):
     """Make colorbar symmetric with respect to zero.
-		Note: this does not update the colobar limits, but adjusts
-		the colormap such that the node is around zero.
+        Note: this does not update the colobar limits, but adjusts
+        the colormap such that the node is around zero.
 
-		INPUTS:
-		fig  - figure object to attach colobar to
-		obj  - color plot [e.g. obj=contourf()]
-    	zero - node to assign color of 0
+        INPUTS:
+        fig  - figure object to attach colobar to
+        obj  - color plot [e.g. obj=contourf()]
+        zero - node to assign color of 0
     """
     cb = fig.colorbar(obj)
     (cmn,cmx) = cb.get_clim()
