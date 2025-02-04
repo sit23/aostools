@@ -515,7 +515,7 @@ def ComputeVertEddy(v,t,p,p0=1e3,wave=0):
 	t_bar = np.nanmean(t,axis=-1) # t_bar = theta_bar
 	# prepare pressure derivative
 	dthdp = np.gradient(t_bar,edge_order=2)[1]/dp # dthdp = d(theta_bar)/dp
-	dthdp[dthdp==0] = np.NaN
+	dthdp[dthdp==0] = np.nan
 	# time mean of d(theta_bar)/dp
 	dthdp = np.nanmean(dthdp,axis=0)[np.newaxis,:]
 	# now get wave component
@@ -569,6 +569,8 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 	dthdp = t_bar.differentiate(p,edge_order=2) # dthdp = d(theta_bar)/dp
 	dthdp = dthdp.where(dthdp != 0)
 	# time mean of d(theta_bar)/dp
+	print('clipping small values of dthdp to prevent large values of 1./dthdp')
+	dthdp = dthdp.where(np.abs(dthdp)>0.02)
 	if time in dthdp.dims:
 		if 'rolling' in ref:
 			r = int(ref.split('-')[-1])
