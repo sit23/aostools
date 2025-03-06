@@ -432,7 +432,7 @@ def ComputePsiXr(v, t, lon='lon', lat='lat', pres='level', time='time', ref='mea
 	from .constants import kappa,a0,g
 	#
 	## compute psi
-	v_bar,t_bar = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref) # t_bar = bar(v'Th'/(dTh_bar/dp))
+	v_bar,t_bar, dthdp_bar = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref) # t_bar = bar(v'Th'/(dTh_bar/dp))
 
 	# Eulerian streamfunction
 	pdim = v_bar.get_axis_num(pres)
@@ -571,6 +571,17 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 	# time mean of d(theta_bar)/dp
 	print('clipping small values of dthdp to prevent large values of 1./dthdp')
 	dthdp = dthdp.where(np.abs(dthdp)>0.02)
+	dthdp = dthdp.where(dthdp<0.0)
+	# import pdb
+	# import matplotlib.pyplot as plt
+	# import xarray as xar
+	# for t_tick in range(30):
+	# 	plt.close('all')
+	# 	fig,axes = plt.subplots(1,2)
+	# 	xar.plot.hist(1./dthdp[t_tick,...], bins=100, ax=axes[0])
+	# 	(1./dthdp[t_tick]).plot.contourf(levels=30, ax=axes[1], yincrease=False)
+	# 	plt.savefig(f'hist_{t_tick}.pdf')
+	# pdb.set_trace()
 	if time in dthdp.dims:
 		if 'rolling' in ref:
 			r = int(ref.split('-')[-1])
@@ -589,7 +600,7 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 		vpTp = GetWavesXr(v,t,dim=lon,wave=wave) # vpTp = bar(v'Th'_{k=wave})
 	t_bar = vpTp/dthdp # t_bar = bar(v'Th')/(dTh_bar/dp)
 	#
-	return v_bar,t_bar
+	return v_bar,t_bar, dthdp
 
 ##############################################################################################
 def eof(X,n=-1,detrend='constant',eof_in=None):
@@ -938,7 +949,7 @@ def ComputeWstarXr(omega, temp, vcomp, pres='level', lon='lon', lat='lat', time=
         # correct for units: degrees<->radians
 	R = R*180/np.pi
 	# compute thickness weighted meridional heat flux
-	_,vt_bar = ComputeVertEddyXr(vcomp, temp, pres, p0, lon, time, ref)
+	_,vt_bar, dtdp_bar = ComputeVertEddyXr(vcomp, temp, pres, p0, lon, time, ref)
 	# get the meridional derivative
 	vt_bar = (coslat*vt_bar).differentiate(lat)
 	# compute zonal mean upwelling
@@ -1118,7 +1129,7 @@ def ComputeEPfluxDivXr(u,v,t,lon='infer',lat='infer',pres='infer',time='time',re
 	fhat = f - fhat # [1/s]
 	#
 	## compute thickness weighted heat flux [m.hPa/s]
-	vbar,vertEddy = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref,wave) # vertEddy = bar(v'Th'/(dTh_bar/dp))
+	vbar,vertEddy, dthdp_bar = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref,wave) # vertEddy = bar(v'Th'/(dTh_bar/dp))
 	#
 	## get zonal anomalies
 	if isinstance(wave,list):
@@ -1179,7 +1190,7 @@ def ComputeEPfluxDivXr(u,v,t,lon='infer',lat='infer',pres='infer',time='time',re
 	ep2_cart.name = 'ep2'
 	div1.name = 'div1'
 	div2.name = 'div2'
-	return ep1_cart.transpose(*new_order),ep2_cart.transpose(*new_order),div1.transpose(*new_order),div2.transpose(*new_order)
+	return ep1_cart.transpose(*new_order),ep2_cart.transpose(*new_order),div1.transpose(*new_order),div2.transpose(*new_order), dthdp_bar
 
 ##############################################################################################
 def ComputeStreamfunction(u,v,lat='lat',lon='lon',use_windspharm=False,lat0=0,lon0=0,method='uv',smooth=None,vw=None):
