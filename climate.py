@@ -9,6 +9,9 @@
 #
 from __future__ import print_function
 import numpy as np
+import xrft
+import xarray as xr
+import pdb
 # from numba import jit
 
 ## helper function: Get actual width and height of axes
@@ -592,7 +595,8 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 			dthdp = dthdp
 	# now get wave component
 	if isinstance(wave,list):
-		vpTp = GetWavesXr(v,t,dim=lon,wave=-1).sel(k=wave).sum('k')
+		print('doing get waves xar in vert eddy')
+		vpTp = GetWavesXrft(v, t, dim=lon, wave=wave)
 	elif wave == 0:
 		vpTp = (v - v_bar)*(t - t_bar)
 		vpTp = vpTp.mean(lon)  # vpTp = bar(v'Th')
@@ -603,6 +607,7 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 	return v_bar,t_bar, dthdp
 
 ##############################################################################################
+
 def eof(X,n=-1,detrend='constant',eof_in=None):
 	"""Principal Component Analysis / Empirical Orthogonal Functions / SVD
 
@@ -1129,11 +1134,13 @@ def ComputeEPfluxDivXr(u,v,t,lon='infer',lat='infer',pres='infer',time='time',re
 	fhat = f - fhat # [1/s]
 	#
 	## compute thickness weighted heat flux [m.hPa/s]
+	print('arrived at vert eddy xar')
 	vbar,vertEddy, dthdp_bar = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref,wave) # vertEddy = bar(v'Th'/(dTh_bar/dp))
 	#
 	## get zonal anomalies
 	if isinstance(wave,list):
-		upvp = GetWavesXr(u,v,dim=lon,wave=-1).sel(k=wave).sum('k')
+		# upvp = GetWavesXr(u,v,dim=lon,wave=-1).sel(k=wave).sum('k')
+		upvp = GetWavesXrft(u, v, dim=lon, wave=wave)
 	elif wave == 0:
 		u = u - u.mean(lon)
 		v = v - v.mean(lon)
@@ -1154,7 +1161,8 @@ def ComputeEPfluxDivXr(u,v,t,lon='infer',lat='infer',pres='infer',time='time',re
 	ep2_cart = fhat*vertEddy # [1/s*m.hPa/s] = [m.hPa/s2]
 	if w is not None:
 		if isinstance(wave,list):
-			w = GetWavesXr(u,w,dim=lon,wave=-1).sel(k=wave).sum('k')
+			# w = GetWavesXr(u,w,dim=lon,wave=-1).sel(k=wave).sum('k')
+			w = GetWavesXrft(u, w, dim=lon, wave=wave)
 		elif wave == 0:
 			w = w - w.mean(lon) # w = w' [hPa/s]
 			w = (w*u).mean(lon) # w = bar(u'w') [m.hPa/s2]
@@ -2047,17 +2055,19 @@ def GetWaves(x,y=None,wave=-1,axis=-1,do_anomaly=False):
 		xym	   - data in Fourier space
 	"""
 	initShape = x.shape
-	x = AxRoll(x,axis)
-	if y is not None:
-		y = AxRoll(y,axis)
+	# x = AxRoll(x,axis)
+	# if y is not None:
+	# 	y = AxRoll(y,axis)
 	# compute anomalies
 	if do_anomaly:
-		x = GetAnomaly(x,0)
+		x = GetAnomaly(x,axis)
 		if y is not None:
-			y = GetAnomaly(y,0)
+			y = GetAnomaly(y, axis)
 	# Fourier decompose
-	x = np.fft.fft(x,axis=0)
-	nmodes = x.shape[0]//2+1
+	print('doing fft')
+	x = np.fft.fft(x,axis=axis)
+	print('done fft')
+	nmodes = x.shape[axis]//2+1
 	if wave < 0:
 			if y is not None:
 				xym = np.zeros((nmodes,)+x.shape[1:])
@@ -2066,14 +2076,15 @@ def GetWaves(x,y=None,wave=-1,axis=-1,do_anomaly=False):
 	else:
 		xym = np.zeros(initShape[:-1])
 	if y is not None:
-			y = np.fft.fft(y,axis=0)
+			y = np.fft.fft(y,axis=axis)
 			# Take out the waves
-			nl  = x.shape[0]**2
+			nl  = x.shape[axis]**2
 			xyf  = np.real(x*y.conj())/nl
 			# due to symmetric spectrum, there's a factor of 2, but not for wave-0
 			mask = np.zeros_like(xyf)
+			pdb.set_trace()
 			if wave < 0:
-				for m in range(xym.shape[0]):
+				for m in range(xym.shape[axis]):
 					mask[m,:] = 1
 					mask[-m,:]= 1
 					xym[m,:] = np.sum(xyf*mask,axis=0)
@@ -2120,7 +2131,36 @@ def GetAnomaly(x,axis=-1):
 	return x
 
 ##############################################################################################
-def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None):
+
+def GetWavesXrft(x, y, wave=-1, dim='lon', anomaly=None):
+
+	ftx = xrft.fft(x, dim='lon')
+	fty = xrft.fft(y, dim='lon')
+
+	ftx_wavenumbers = ftx.freq_lon.values*360.
+	fty_wavenumbers = fty.freq_lon.values*360.
+
+	ftx_mask = xr.zeros_like(ftx.coords['freq_lon'])
+
+	if type(wave)==list:
+		for wave_val in wave:
+			where_wave = np.where(np.abs(ftx_wavenumbers)==wave_val)[0]
+			ftx_mask[where_wave] = 1.0
+	elif wave==-1:
+		ftx_mask += 1.
+
+	ftx = ftx * ftx_mask
+	fty = fty * ftx_mask
+
+	filter_x = np.real(xrft.ifft(ftx, dim='freq_lon'))
+	filter_y = np.real(xrft.ifft(fty, dim='freq_lon'))
+
+	prod = filter_x*filter_y
+
+	return prod.mean('lon')
+
+##############################################################################################
+def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None, stack=False):
 	"""Get Fourier mode decomposition of x, or <x*y>, where <.> is zonal mean.
 
 		If y!=None, returns Fourier mode contributions (amplitudes) to co-spectrum zonal mean of x*y. Dimension along which Fourier is performed is either gone (wave>=0) or has len(axis)/2+1 due to Fourier symmetry for real signals (wave<0).
@@ -2138,6 +2178,7 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None):
 		xym	   - data. xr.DataArray
 	"""
 	from xarray import DataArray
+	print(1)
 	if dim == 'infer':
 		dim_names = FindCoordNames(x)
 		dim = dim_names['lon']
@@ -2145,19 +2186,25 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None):
 		x = x - x.mean(anomaly)
 		if y is not None:
 			y = y - y.mean(anomaly)
-	sdims = [d for d in x.dims if d != dim]
-	if len(sdims) == 0:
-		xstack = x.expand_dims('stacked',axis=-1)
-	else:
-		xstack = x.stack(stacked=sdims)
-	if y is None:
-		ystack=None
-	else:
+	if stack:
+		sdims = [d for d in x.dims if d != dim]
 		if len(sdims) == 0:
-			ystack = y.expand_dims('stacked',axis=-1)
+			xstack = x.expand_dims('stacked',axis=-1)
 		else:
-			ystack = y.stack(stacked=sdims)
+			xstack = x.stack(stacked=sdims)
+		if y is None:
+			ystack=None
+		else:
+			if len(sdims) == 0:
+				ystack = y.expand_dims('stacked',axis=-1)
+			else:
+				ystack = y.stack(stacked=sdims)
+	else:
+		xstack = x
+		ystack = y
+	print(2)
 	gw = GetWaves(xstack,ystack,wave=wave,axis=xstack.get_axis_num(dim))
+
 	if y is None and wave >= 0: # result in real space
 		if len(sdims) == 0:
 			stackcoords = x.coords
@@ -2173,6 +2220,7 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None):
 		stackcoords = [xstack.stacked]
 	elif y is not None and wave < 0: # additional dimension of wavenumber
 		stackcoords = [('k',np.arange(gw.shape[0])), xstack.stacked]
+	print(3)
 	gwx = DataArray(gw,coords=stackcoords)
 	return gwx.unstack()
 
