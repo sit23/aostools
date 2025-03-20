@@ -595,7 +595,6 @@ def ComputeVertEddyXr(v,t,p='level',p0=1e3,lon='lon',time='time',ref='mean',wave
 			dthdp = dthdp
 	# now get wave component
 	if isinstance(wave,list):
-		print('doing get waves xar in vert eddy')
 		vpTp = GetWavesXrft(v, t, dim=lon, wave=wave)
 	elif wave == 0:
 		vpTp = (v - v_bar)*(t - t_bar)
@@ -1141,7 +1140,6 @@ def ComputeEPfluxDivXr(u,v,t,lon='infer',lat='infer',pres='infer',time='time',re
 	fhat = f - fhat # [1/s]
 	#
 	## compute thickness weighted heat flux [m.hPa/s]
-	print('arrived at vert eddy xar')
 	vbar,vertEddy, dthdp_bar = ComputeVertEddyXr(v,t,pres,p0,lon,time,ref,wave) # vertEddy = bar(v'Th'/(dTh_bar/dp))
 	#
 	## get zonal anomalies
@@ -2164,7 +2162,7 @@ def GetWavesXrft(x, y, wave=-1, dim='lon', anomaly=None):
 	return prod.mean('lon')
 
 ##############################################################################################
-def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None, stack=False):
+def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None):
 	"""Get Fourier mode decomposition of x, or <x*y>, where <.> is zonal mean.
 
 		If y!=None, returns Fourier mode contributions (amplitudes) to co-spectrum zonal mean of x*y. Dimension along which Fourier is performed is either gone (wave>=0) or has len(axis)/2+1 due to Fourier symmetry for real signals (wave<0).
@@ -2182,7 +2180,6 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None, stack=False):
 		xym	   - data. xr.DataArray
 	"""
 	from xarray import DataArray
-	print(1)
 	if dim == 'infer':
 		dim_names = FindCoordNames(x)
 		dim = dim_names['lon']
@@ -2190,23 +2187,19 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None, stack=False):
 		x = x - x.mean(anomaly)
 		if y is not None:
 			y = y - y.mean(anomaly)
-	if stack:
-		sdims = [d for d in x.dims if d != dim]
-		if len(sdims) == 0:
-			xstack = x.expand_dims('stacked',axis=-1)
-		else:
-			xstack = x.stack(stacked=sdims)
-		if y is None:
-			ystack=None
-		else:
-			if len(sdims) == 0:
-				ystack = y.expand_dims('stacked',axis=-1)
-			else:
-				ystack = y.stack(stacked=sdims)
+	sdims = [d for d in x.dims if d != dim]
+	if len(sdims) == 0:
+		xstack = x.expand_dims('stacked',axis=-1)
 	else:
-		xstack = x
-		ystack = y
-	print(2)
+		xstack = x.stack(stacked=sdims)
+	if y is None:
+		ystack=None
+	else:
+		if len(sdims) == 0:
+			ystack = y.expand_dims('stacked',axis=-1)
+		else:
+			ystack = y.stack(stacked=sdims)
+
 	gw = GetWaves(xstack,ystack,wave=wave,axis=xstack.get_axis_num(dim))
 
 	if y is None and wave >= 0: # result in real space
@@ -2224,7 +2217,6 @@ def GetWavesXr(x,y=None,wave=-1,dim='infer',anomaly=None, stack=False):
 		stackcoords = [xstack.stacked]
 	elif y is not None and wave < 0: # additional dimension of wavenumber
 		stackcoords = [('k',np.arange(gw.shape[0])), xstack.stacked]
-	print(3)
 	gwx = DataArray(gw,coords=stackcoords)
 	return gwx.unstack()
 
