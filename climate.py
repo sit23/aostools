@@ -2062,18 +2062,16 @@ def GetWaves(x,y=None,wave=-1,axis=-1,do_anomaly=False):
 		xym	   - data in Fourier space
 	"""
 	initShape = x.shape
-	# x = AxRoll(x,axis)
-	# if y is not None:
-	# 	y = AxRoll(y,axis)
+	x = AxRoll(x,axis)
+	if y is not None:
+		y = AxRoll(y,axis)
 	# compute anomalies
 	if do_anomaly:
-		x = GetAnomaly(x,axis)
+		x = GetAnomaly(x,0)
 		if y is not None:
-			y = GetAnomaly(y, axis)
+			y = GetAnomaly(y, 0)
 	# Fourier decompose
-	print('doing fft')
 	x = np.fft.fft(x,axis=axis)
-	print('done fft')
 	nmodes = x.shape[axis]//2+1
 	if wave < 0:
 			if y is not None:
@@ -2083,15 +2081,14 @@ def GetWaves(x,y=None,wave=-1,axis=-1,do_anomaly=False):
 	else:
 		xym = np.zeros(initShape[:-1])
 	if y is not None:
-			y = np.fft.fft(y,axis=axis)
+			y = np.fft.fft(y,axis=0)
 			# Take out the waves
-			nl  = x.shape[axis]**2
+			nl  = x.shape[0]**2
 			xyf  = np.real(x*y.conj())/nl
 			# due to symmetric spectrum, there's a factor of 2, but not for wave-0
 			mask = np.zeros_like(xyf)
-			pdb.set_trace()
 			if wave < 0:
-				for m in range(xym.shape[axis]):
+				for m in range(xym.shape[0]):
 					mask[m,:] = 1
 					mask[-m,:]= 1
 					xym[m,:] = np.sum(xyf*mask,axis=0)
