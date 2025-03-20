@@ -804,7 +804,7 @@ def ComputeAnnularMode(lat, pres, data, choice='z', hemi='infer', detrend='const
 		return AM
 
 ##############################################################################################
-def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e3):
+def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', lon='lon', lat='lat', time='time', ref='mean', wave=-1, p0=1e3):
 	"""Computes the residual meridional wind v* (as a function of time).
 
 		INPUTS:
@@ -837,13 +837,20 @@ def ComputeVstar(data, temp='temp', vcomp='vcomp', pfull='pfull', wave=-1, p0=1e
 		inFile.close()
 		#
 		v_bar,t_bar = ComputeVertEddy(v,t,p,p0,wave=wave)
-	else:
+		# t_bar = bar(v'Th'/(dTh_bar/dp))
+		#		
+		dp  = np.gradient(p)[np.newaxis,:,np.newaxis]
+		vstar = v_bar - np.gradient(t_bar,edge_order=2)[1]/dp				
+	elif type(data)==dict:
 		p = data[pfull]
 		v_bar,t_bar = ComputeVertEddy(data[vcomp],data[temp],p,p0,wave=wave)
-	# t_bar = bar(v'Th'/(dTh_bar/dp))
-	#
-	dp  = np.gradient(p)[np.newaxis,:,np.newaxis]
-	vstar = v_bar - np.gradient(t_bar,edge_order=2)[1]/dp
+		# t_bar = bar(v'Th'/(dTh_bar/dp))
+		#		
+		dp  = np.gradient(p)[np.newaxis,:,np.newaxis]
+		vstar = v_bar - np.gradient(t_bar,edge_order=2)[1]/dp		
+	else:
+		v_bar,t_bar, dtdp_bar = ComputeVertEddyXr(data[vcomp], data[temp], pfull, p0, lon, time, ref)
+		vstar = v_bar - t_bar.differentiate(pfull,edge_order=2)	
 
 	return vstar
 
