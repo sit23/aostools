@@ -2150,6 +2150,8 @@ def GetWavesXrft(x, y, wave=-1, dim='lon', anomaly=None):
 			ftx_mask[where_wave] = 1.0
 	elif wave==-1:
 		ftx_mask += 1.
+	else:
+		raise NotImplementedError('Have not implemented alternatives for wave type')
 
 	ftx = ftx * ftx_mask
 	fty = fty * ftx_mask
