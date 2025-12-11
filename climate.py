@@ -12,6 +12,7 @@ import numpy as np
 import xrft
 import xarray as xr
 import pdb
+import logging
 # from numba import jit
 
 ## helper function: Get actual width and height of axes
@@ -2149,6 +2150,13 @@ def GetWavesXrft(x, y, wave=-1, dim='lon', anomaly=None):
 	if type(wave)==list:
 		for wave_val in wave:
 			where_wave = np.where(np.abs(ftx_wavenumbers)==wave_val)[0]
+			if len(where_wave)<1:
+				logging.info(f'No exact found for wave={wave_val}. Trying alternate method')
+				where_wave = np.where(np.abs(np.abs(ftx_wavenumbers) - wave_val)<0.5)
+				if np.shape(where_wave)[0]>0:
+					logging.info(f'Approx match found')				
+				else:
+					pdb.set_trace()
 			ftx_mask[where_wave] = 1.0
 	elif wave==-1:
 		ftx_mask += 1.
