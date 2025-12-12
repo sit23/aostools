@@ -2152,9 +2152,9 @@ def GetWavesXrft(x, y, wave=-1, dim='lon', anomaly=None):
 			where_wave = np.where(np.abs(ftx_wavenumbers)==wave_val)[0]
 			if len(where_wave)<1:
 				logging.info(f'No exact found for wave={wave_val}. Trying alternate method')
-				where_wave = np.where(np.abs(np.abs(ftx_wavenumbers) - wave_val)<0.5)
+				where_wave = np.where(np.abs(np.abs(ftx_wavenumbers) - wave_val)<0.1)
 				if np.shape(where_wave)[0]>0:
-					logging.info(f'Approx match found')				
+					logging.info(f'Approx match found at {ftx_wavenumbers[where_wave]}')				
 				else:
 					pdb.set_trace()
 			ftx_mask[where_wave] = 1.0
